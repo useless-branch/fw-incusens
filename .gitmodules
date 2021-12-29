@@ -1,0 +1,6 @@
+[submodule "kvasir"]
+	path = kvasir
+	url = ssh://git@dominicp.de/306_kvasir
+[submodule "chip"]
+	path = chip
+	url = ssh://git@dominicp.de/kvasir_atsamc21e17a
