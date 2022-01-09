@@ -4,3 +4,6 @@
 [submodule "chip"]
 	path = chip
 	url = ssh://git@dominicp.de/kvasir_atsamc21e17a
+[submodule "aglio"]
+	path = aglio
+	url = git@github.com:dominicpoeschko/aglio.git
