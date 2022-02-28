@@ -2,10 +2,11 @@
 // Created by patrick on 1/6/22.
 //
 #pragma once
-#include <chrono>
-#include <optional>
+#include "BoardConfig.hpp"
 #include "serializer.hpp"
 
+#include <chrono>
+#include <optional>
 
 template<typename CAN, typename Clock>
 struct CANCommunicator {
@@ -15,16 +16,16 @@ struct CANCommunicator {
     std::optional<float>         AbsoluteHumidity;
     std::optional<std::uint32_t> AirQualityVOC;
     std::optional<std::uint32_t> AirQualityCO2;
-    std::optional<float>         Light;
+    std::optional<std::uint32_t> Light;
     std::optional<float>         AirPressure;
 
-    bool   busy_;
-    tp     waitTime_;
+    bool          busy_;
+    tp            waitTime_;
     std::uint32_t errorCounter{0};
 
     static constexpr auto sendInterval{std::chrono::seconds(1)};
 
-    enum class State : std::uint8_t  {
+    enum class State : std::uint8_t {
         reset,
         idle,
         sendTemperature,
@@ -46,8 +47,18 @@ struct CANCommunicator {
             KL_E("can is not working... shutting can down!");
         }
 
+        auto packCanMessage = [](auto value, std::uint32_t identifier) {
+            constexpr size_t         dataSize = sizeof(value);
+            std::array<std::byte, 8> buffer{};
+            std::memcpy(&buffer, &value, dataSize);
+            return Kvasir::CAN::CanMessage{
+              identifier << 18U,
+              (dataSize << 16U) | 0xFF000000,
+              buffer};
+        };
+
         switch(st_) {
-            case State::reset:
+        case State::reset:
             {
                 errorCounter = 0;
                 st_          = State::idle;
@@ -60,7 +71,7 @@ struct CANCommunicator {
                 AirPressure.reset();
                 //waitTime_ = currentTime + std::chrono::seconds(5);
             }
-                break;
+            break;
         case State::idle:
             {
                 busy_        = false;
@@ -72,29 +83,18 @@ struct CANCommunicator {
             }
             break;
 
-
-
         case State::sendTemperature:
             {
-
                 st_ = State::sendRelHumidity;
                 if(Temperature) {
-                    auto                     value      = Temperature.value();
-                    constexpr size_t         dataSize   = sizeof(value);
-                    constexpr std::uint8_t   identifier = 0x1;
-                    std::array<std::byte, 8> buffer{};
-                    std::memcpy(
-                            &buffer,
-                            &value,
-                            dataSize
-                    );
-                    Kvasir::CAN::CanMessage msg{identifier << 18U, (dataSize << 16U) | 0xFF000000, buffer};
-                    if (!Can::send(msg)) {
+                    auto msg = packCanMessage(
+                      Temperature.value(),
+                      BoardConfig::Sensors::Temperature::canAddressTemp);
+                    if(!Can::send(msg)) {
                         st_ = State::sendTemperature;
                         ++errorCounter;
                         KL_W("Could not send temperature");
                     }
-
                 }
             }
             break;
@@ -103,12 +103,9 @@ struct CANCommunicator {
             {
                 st_ = State::sendAbsHumidity;
                 if(RelativeHumidity) {
-                    auto value = RelativeHumidity.value();
-                    constexpr size_t dataSize = sizeof(value);
-                    constexpr std::uint8_t identifier = 0x2;
-                    std::array<std::byte, 8> buffer{};
-                    std::memcpy(&buffer, &value, dataSize);
-                    Kvasir::CAN::CanMessage msg{identifier << 18U, (dataSize << 16U) | 0xFF000000, buffer};
+                    auto msg = packCanMessage(
+                      RelativeHumidity.value(),
+                      BoardConfig::Sensors::Temperature::canAddressRelativeHumid);
                     if(!Can::send(msg)) {
                         st_ = State::sendRelHumidity;
                         KL_W("Could not send relative humidity");
@@ -120,12 +117,9 @@ struct CANCommunicator {
             {
                 st_ = State::sendAQVOC;
                 if(AbsoluteHumidity) {
-                    auto value = AbsoluteHumidity.value();
-                    constexpr size_t dataSize = sizeof(value);
-                    constexpr std::uint8_t identifier = 0x3;
-                    std::array<std::byte, 8> buffer{};
-                    std::memcpy(&buffer, &value, dataSize);
-                    Kvasir::CAN::CanMessage msg{identifier << 18U, (dataSize << 16U) | 0xFF000000, buffer};
+                    auto msg = packCanMessage(
+                      AbsoluteHumidity.value(),
+                      BoardConfig::Sensors::Temperature::canAddressAbsoluteHumid);
                     if(!Can::send(msg)) {
                         st_ = State::sendAbsHumidity;
                         ++errorCounter;
@@ -139,12 +133,9 @@ struct CANCommunicator {
             {
                 st_ = State::sendAQCO2;
                 if(AirQualityVOC) {
-                    auto value = AirQualityVOC.value();
-                    constexpr size_t dataSize = sizeof(value);
-                    constexpr std::uint8_t identifier = 0x4;
-                    std::array<std::byte, 8> buffer{};
-                    std::memcpy(&buffer, &value, dataSize);
-                    Kvasir::CAN::CanMessage msg{identifier << 18U, (dataSize << 16U) | 0xFF000000, buffer};
+                    auto msg = packCanMessage(
+                            AirQualityVOC.value(),
+                            BoardConfig::Sensors::AirQuality::canAddressVOC);
                     if(!Can::send(msg)) {
                         st_ = State::sendAQVOC;
                         ++errorCounter;
@@ -158,12 +149,9 @@ struct CANCommunicator {
             {
                 st_ = State::sendLight;
                 if(AirQualityCO2) {
-                    auto value = AirQualityCO2.value();
-                    constexpr size_t dataSize = sizeof(value);
-                    constexpr std::uint8_t identifier = 0x5;
-                    std::array<std::byte, 8> buffer{};
-                    std::memcpy(&buffer, &value, dataSize);
-                    Kvasir::CAN::CanMessage msg{identifier << 18U, (dataSize << 16U) | 0xFF000000, buffer};
+                    auto msg = packCanMessage(
+                            AirQualityCO2.value(),
+                            BoardConfig::Sensors::AirQuality::canAddressCO2Eq);
                     if(!Can::send(msg)) {
                         st_ = State::sendAQCO2;
                         ++errorCounter;
@@ -177,12 +165,9 @@ struct CANCommunicator {
             {
                 st_ = State::sendAirPressure;
                 if(Light) {
-                    auto value = Light.value();
-                    constexpr size_t dataSize = sizeof(value);
-                    constexpr std::uint8_t identifier = 0x6;
-                    std::array<std::byte, 8> buffer{};
-                    std::memcpy(&buffer, &value, dataSize);
-                    Kvasir::CAN::CanMessage msg{identifier << 18U, (dataSize << 16U) | 0xFF000000, buffer};
+                    auto msg = packCanMessage(
+                            Light.value(),
+                            BoardConfig::Sensors::Light::canAddress);
                     if(!Can::send(msg)) {
                         st_ = State::sendLight;
                         ++errorCounter;
@@ -196,12 +181,9 @@ struct CANCommunicator {
             {
                 st_ = State::idle;
                 if(AirPressure) {
-                    auto value = AirPressure.value();
-                    constexpr size_t dataSize = sizeof(value);
-                    constexpr std::uint8_t identifier = 0x7;
-                    std::array<std::byte, 8> buffer{};
-                    std::memcpy(&buffer, &value, dataSize);
-                    Kvasir::CAN::CanMessage msg{identifier << 18U, (dataSize << 16U) | 0xFF000000, buffer};
+                    auto msg = packCanMessage(
+                            AirPressure.value(),
+                            BoardConfig::Sensors::Pressure::canAddress);
                     if(!Can::send(msg)) {
                         st_ = State::sendAirPressure;
                         ++errorCounter;
