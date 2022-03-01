@@ -8,5 +8,5 @@
 	path = recreated_goon
     url = ssh://git@dominicp.de/recreated_goon.git
 [submodule "aglio"]
-    path = aglio
+	path = aglio
 	url = ssh://git@dominicp.de/aglio.git
