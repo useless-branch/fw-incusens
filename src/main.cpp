@@ -24,9 +24,42 @@ using Startup
 #include "kvasir/Devices/sgp30.hpp"
 #include "kvasir/Devices/sht30.hpp"
 #include "CANCommunicator.hpp"
+#include "aglio/packager.hpp"
+#include "aglio/serializer.hpp"
+#include "kvasir/Util/AppBootloader.hpp"
+
+
+template<typename Can>
+struct AppBootloaderPart {
+    using RequestSet = Kvasir::Bootloader::RequestSet;
+    using Packager   = Kvasir::Bootloader::Packager;
+
+    struct ID {
+        auto operator()() { return Kvasir::serial_number(); }
+    };
+
+    struct ProductType {
+        auto operator()() { return Kvasir::Version::NameTargetVersion; }
+    };
+
+    Kvasir::Bootloader::AppBootloader<Clock, ID, ProductType> appBootloader{};
+    Kvasir::StaticVector<std::byte, 128>                      recvBuffer;
+    void handler(Kvasir::CAN::CanMessage const& newMsg) {
+        if(newMsg.id() == 1) {
+            auto ret = Kvasir::Bootloader::parse<RequestSet>(newMsg, recvBuffer);
+            if(ret) {
+                appBootloader.handler(*ret, [](auto const& response, std::uint8_t channel) {
+                    Kvasir::Bootloader::CAN::packAndSend<Can>(response, channel);
+                });
+            }
+        }
+    }
+};
+
 
 int main() {
     KL_I("{}", Kvasir::Version::FullVersion);
+    AppBootloaderPart<Can> bootloader;
 
     auto next1s  = Clock::now();
 
@@ -72,7 +105,12 @@ int main() {
                                CurrentLight,
                                CurrentAirPressure);
 
-        //canCommunicator.handler();
+        canCommunicator.handler();
+        //Goes 0...70
+        if(auto msg = Can::recv(); msg) {
+            bootloader.handler(*msg);
+        }
+
 
         //TODO CAN communication!
         /*

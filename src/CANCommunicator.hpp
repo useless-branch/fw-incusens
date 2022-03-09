@@ -48,12 +48,11 @@ struct CANCommunicator {
 
         auto packCanMessage = [](auto value, std::uint32_t identifier) {
             constexpr size_t         dataSize = sizeof(value);
-            std::array<std::byte, 8> buffer{};
-            std::memcpy(&buffer, &value, dataSize);
-            return Kvasir::CAN::CanMessage{
-              identifier << 18U,
-              (dataSize << 16U) | 0xFF000000,
-              buffer};
+            Kvasir::CAN::CanMessage msg;
+            msg.setId(identifier);
+            msg.setSize(dataSize);
+            std::memcpy(&msg.data, &value, dataSize);
+            return msg;
         };
 
         switch(st_) {
