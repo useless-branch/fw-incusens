@@ -26,7 +26,7 @@ using Startup
 #include "aglio/packager.hpp"
 #include "aglio/serializer.hpp"
 #include "kvasir/Util/AppBootloader.hpp"
-
+#include "Watchdog.hpp"
 
 template<typename Can>
 struct AppBootloaderPart {
@@ -58,6 +58,8 @@ struct AppBootloaderPart {
 
 int main() {
     KL_I("{}", Kvasir::Version::FullVersion);
+    WDReset{}();
+    WDReset{}.enable();
     AppBootloaderPart<Can> bootloader;
 
     auto next1s  = Clock::now();
