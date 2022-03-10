@@ -111,9 +111,7 @@ static constexpr bool        EnableSelfOverride = false;
 
 using Crc = Kvasir::Bootloader::Crc;
 
-struct WDReset {
-    constexpr void operator()() {}
-};
+#include "Watchdog.hpp"
 
 using Com = Kvasir::Bootloader::CAN::
   Com<Clock, Can, Kvasir::Bootloader::RequestSet, Kvasir::Bootloader::ResponseSet, WDReset>;
@@ -132,6 +130,8 @@ struct ProductType {
 
 int main() {
     KL_T("{}", Kvasir::Version::FullVersion);
+    WDReset{}();
+    WDReset{}.enable();
     Kvasir::Bootloader::Bootloader<
       Clock,
       Com,

@@ -3,6 +3,7 @@
 //
 #pragma once
 #include "BoardConfig.hpp"
+#include "Watchdog.hpp"
 
 #include <chrono>
 #include <optional>
@@ -74,6 +75,7 @@ struct CANCommunicator {
             {
                 busy_        = false;
                 errorCounter = 0;
+                WDReset{}();
                 if(currentTime > waitTime_) {
                     st_   = State::sendTemperature;
                     busy_ = true;

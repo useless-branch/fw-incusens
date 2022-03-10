@@ -27,6 +27,7 @@ using Startup
 #include "aglio/packager.hpp"
 #include "aglio/serializer.hpp"
 #include "kvasir/Util/AppBootloader.hpp"
+#include "Watchdog.hpp"
 
 
 template<typename Can>
@@ -59,6 +60,8 @@ struct AppBootloaderPart {
 
 int main() {
     KL_I("{}", Kvasir::Version::FullVersion);
+    WDReset{}();
+    WDReset{}.enable();
     AppBootloaderPart<Can> bootloader;
 
     auto next1s  = Clock::now();
@@ -110,22 +113,6 @@ int main() {
         if(auto msg = Can::recv(); msg) {
             bootloader.handler(*msg);
         }
-
-
-        //TODO CAN communication!
-        /*
-        if(auto msg = Can::recv(); msg) {
-            if(msg->data[0] == 0x02_b) {
-                KL_T("revc {} {}", msg->size(), msg->data);
-
-                msg->F0 = ((((msg->F0 & 0x1ffc0000_u32) >> 18_u32) - 2_u32) % (1_u32 << 11_u32))
-                       << 18_u32;
-                KL_D("CAN: id={:x} s={:x} - {}", msg->F0 >> 2U, msg->F1 , msg->data);
-                if(!Can::send(*msg)) {
-                    KL_E("send fail");
-                }
-            }
-        }*/
 
         i2cPowerManager.handler();
         StackProtector::handler();
