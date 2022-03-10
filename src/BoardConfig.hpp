@@ -8,7 +8,7 @@
 
 struct BoardConfig {
     static constexpr auto name{"Incubator"};
-    static constexpr auto canBaseAddress{0x70};
+    static constexpr auto canBaseAddress{70};
     struct Sensors {
         struct Temperature {
         private:
