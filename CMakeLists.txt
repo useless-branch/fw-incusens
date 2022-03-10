@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project("Incusens Firmware (Incubator)" VERSION 0.1.0)
+project("Incusens Firmware (Fridge)" VERSION 0.1.0)
 
 include(kvasir/cmake/kvasir.cmake)
 

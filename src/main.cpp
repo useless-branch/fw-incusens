@@ -7,7 +7,6 @@
 #include "kvasir/Util/log.hpp"
 #include "kvasir/Util/version.hpp"
 
-
 using Clock = HW::SystickClock;
 
 using I2C              = Kvasir::Sercom::I2C::I2CBehavior<HW::I2CConfig, Clock, 32>;
@@ -64,68 +63,45 @@ int main() {
     auto next1s  = Clock::now();
 
     Kvasir::SHT30<I2C, Clock>  TemperatureSensor{0x44}; //Address in DEC: 68
-    Kvasir::SGP30<I2C, Clock>  AirQualitySensor{0x58}; //Address in DEC: 88
-    Kvasir::BMP384<I2C, Clock> PressureSensor{0x77}; //Address in DEC: 119
-    Kvasir::BH1751<I2C, Clock> LightSensor{0x23}; //Address in DEC: 35
+
+    //Currently not working -> Error in Footprint
+    //Kvasir::BH1751<I2C, Clock> LightSensor{0x23}; //Address in DEC: 35
     CANCommunicator<Can, Clock> canCommunicator;
 
 
     auto i2cPowerManager{Kvasir::make_I2CPowerManager<I2C, Clock, HW::Pin::sw_vdd, true>(
-      TemperatureSensor,
-      AirQualitySensor,
-      LightSensor,
-      PressureSensor)};
+      TemperatureSensor
+     )};
 
     while(true) {
         std::optional<float> CurrentTemperature{TemperatureSensor.t()};
         std::optional<float> CurrentRelativeHumidity{TemperatureSensor.rh()};
         std::optional<float> CurrentAbsoluteHumidity{TemperatureSensor.ah()};
-        std::optional<float> CurrentLight{LightSensor.lux()};
-        std::optional<float> CurrentAirPressure{PressureSensor.p()};
 
         if(Clock::now() >= next1s) {
             next1s = Clock::now() + 1s;
             KL_T(
-              "Temp:{:.1f} HumidRel:{:.1f} HumidAbs:{:.1f} VOC:{} CO2Eq:{} Light:{} Pressure:{:.1f} {:.1f}",
+              "Temp:{:.1f} HumidRel:{:.1f} HumidAbs:{:.1f}",
               TemperatureSensor.t(),
               TemperatureSensor.rh(),
-              TemperatureSensor.ah(),
-              AirQualitySensor.vocraw_,
-              AirQualitySensor.co2eqraw_,
-              LightSensor.luxraw_,
-              PressureSensor.p(),
-              PressureSensor.t());
+              TemperatureSensor.ah()
+              );
         }
 
-        canCommunicator.update(CurrentTemperature,
-                               CurrentRelativeHumidity,
-                               CurrentAbsoluteHumidity,
-                               AirQualitySensor.vocraw_,
-                               AirQualitySensor.co2eqraw_,
-                               CurrentLight,
-                               CurrentAirPressure);
+        canCommunicator.update(static_cast<std::optional<float>>(TemperatureSensor.t()),
+                               static_cast<std::optional<float>>(TemperatureSensor.rh()),
+                               static_cast<std::optional<float>>(TemperatureSensor.ah()),
+                               std::nullopt,
+                               std::nullopt,
+                               std::nullopt,
+                               std::nullopt
+                               );
 
         canCommunicator.handler();
         //Goes 0...70
         if(auto msg = Can::recv(); msg) {
             bootloader.handler(*msg);
         }
-
-
-        //TODO CAN communication!
-        /*
-        if(auto msg = Can::recv(); msg) {
-            if(msg->data[0] == 0x02_b) {
-                KL_T("revc {} {}", msg->size(), msg->data);
-
-                msg->F0 = ((((msg->F0 & 0x1ffc0000_u32) >> 18_u32) - 2_u32) % (1_u32 << 11_u32))
-                       << 18_u32;
-                KL_D("CAN: id={:x} s={:x} - {}", msg->F0 >> 2U, msg->F1 , msg->data);
-                if(!Can::send(*msg)) {
-                    KL_E("send fail");
-                }
-            }
-        }*/
 
         i2cPowerManager.handler();
         StackProtector::handler();
