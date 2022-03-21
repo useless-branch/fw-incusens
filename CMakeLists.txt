@@ -4,7 +4,6 @@ project("Incusens Firmware (Fridge)" VERSION 0.1.0)
 
 include(kvasir/cmake/kvasir.cmake)
 
-set(RECREATED_GOON_CROSSCOMPILING True)
 add_subdirectory(recreated_goon)
 add_subdirectory(aglio)
 
@@ -25,7 +24,8 @@ add_executable(release src/main.cpp)
 target_configure_kvasir(release
     OPTIMIZATION_STRATEGY size
     USE_LOG
-    LINKER_FILE linker/app.ld
+    BOOTLOADER_SIZE 8192
+    LINKER_FILE_TEMPLATE linker/app.ld.in
     BOOTLOADER bootloader
 )
 target_link_libraries(release bootloader_commands aglio)
@@ -33,7 +33,8 @@ target_link_libraries(release bootloader_commands aglio)
 add_executable(bootloader src/bootloader.cpp)
 target_configure_kvasir(bootloader
     OPTIMIZATION_STRATEGY size
-    LINKER_FILE linker/bootloader.ld
+    LINKER_FILE_TEMPLATE linker/bootloader.ld.in
+    ENABLE_SELF_OVERRIDE
     APPLICATION release
 )
 target_link_libraries(bootloader bootloader_commands aglio)
