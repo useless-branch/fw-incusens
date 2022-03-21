@@ -106,8 +106,8 @@ struct PeripheryReset {
 //
 #include "kvasir/Util/Bootloader.hpp"
 
-static constexpr std::size_t BootLoaderSize     = 0x2000;   //TODO parse from linker file!!!!!!
-static constexpr bool        EnableSelfOverride = false;
+static constexpr std::size_t BootLoaderSize     = INPUT_BOOTLOADER_SIZE;
+static constexpr bool        EnableSelfOverride = INPUT_ENABLE_SELF_OVERRIDE;
 
 using Crc = Kvasir::Bootloader::Crc;
 
@@ -117,7 +117,7 @@ using Com = Kvasir::Bootloader::CAN::
   Com<Clock, Can, Kvasir::Bootloader::RequestSet, Kvasir::Bootloader::ResponseSet, WDReset>;
 
 template<typename T>
-struct Eeprom : Kvasir::EepromEmulator<Clock, T, 1, true> {};
+struct Eeprom : Kvasir::SimpleEeprom<Clock, T, true> {};
 
 using Flash = Kvasir::Bootloader::Flash<Clock, EnableSelfOverride ? BootLoaderSize : 0, WDReset>;
 
